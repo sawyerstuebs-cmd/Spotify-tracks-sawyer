@@ -1,146 +1,177 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import html
-from pathlib import Path
 
-# --- 1. CORE THEME & CSS ---
-st.set_page_config(page_title="NIGHT CITY RADIO", page_icon="📻", layout="wide")
+# 1. Page Config
+st.set_page_config(page_title="NIGHT CITY ANALYTICS", page_icon="🏙️", layout="wide")
 
-def apply_night_city_theme():
-    """Applies the Cyberpunk visual layer via CSS injection."""
-    st.markdown("""
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Share+Tech+Mono&display=swap');
+# 2. Cyberpunk Glassmorphism & Neon UI CSS
+st.markdown("""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Share+Tech+Mono&family=Vt323&display=swap');
 
-            .stApp {
-                background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)), 
-                            url('https://images.unsplash.com/photo-1605806616949-1e87b487fc2f?q=80&w=2000');
-                background-size: cover;
-                background-attachment: fixed;
-                color: #00FFFF; 
-                font-family: 'Share Tech Mono', monospace;
-            }
+        /* 🏙️ DYNAMIC CYBERPUNK CITY BACKGROUND */
+        .stApp {
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+                        url('https://images.unsplash.com/photo-1605806616949-1e87b487fc2f?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover;
+            background-attachment: fixed;
+            color: #ffffff;
+        }
 
-            [data-testid="stMetric"], .stPlotlyChart, .stDataFrame {
-                background: rgba(0, 0, 0, 0.95) !important;
-                border: 2px solid #FF00FF !important; 
-                box-shadow: 0 0 15px rgba(255, 0, 255, 0.2);
-            }
+        /* 🧪 GLASSMORPHISM CONTAINERS */
+        [data-testid="stMetric"], .stDataFrame, .stPlotlyChart {
+            background: rgba(0, 0, 0, 0.8) !important;
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
 
-            [data-testid="stSidebar"] {
-                background-color: #000000 !important;
-                border-right: 2px solid #00FFFF;
-            }
-            
-            h1, h2, h3, label {
-                font-family: 'Orbitron', sans-serif !important;
-                text-transform: uppercase;
-                color: #FF00FF !important;
-                text-shadow: 0 0 8px #FF00FF;
-            }
+        /* 🌀 ANIMATION: Neon Spinning Spotify Vinyl */
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .spotify-vinyl {
+            width: 70px;
+            animation: spin 3s linear infinite;
+            filter: drop-shadow(0 0 15px #FF00FF);
+        }
 
-            [data-testid="stMetricValue"] {
-                color: #00FF66 !important;
-                text-shadow: 0 0 10px #00FF66;
-            }
+        /* 🚨 EMERGENCY HEADER Flicker */
+        @keyframes flicker { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        .emergency-header {
+            color: #FF0033;
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 20px #FF0033;
+            animation: flicker 0.8s infinite;
+            text-align: center;
+            font-size: 2.5rem;
+        }
 
-            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-            .radio-disc { width: 70px; animation: spin 4s linear infinite; filter: drop-shadow(0 0 10px #00FFFF); }
-            
-            .status-glow { color: #00FF66; animation: pulse 2s infinite; font-weight: bold; font-size: 0.8rem; }
-            @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-        </style>
-    """, unsafe_allow_html=True)
+        h1, h2, .section-header {
+            font-family: 'Orbitron', sans-serif !important;
+            text-shadow: 2px 2px 10px rgba(0, 255, 255, 0.5);
+        }
 
-# --- 2. SECURE DATA ENGINE ---
+        .section-header {
+            font-size: 1.1rem;
+            color: #00FFFF;
+            border-left: 6px solid #FF00FF;
+            background: rgba(255, 0, 255, 0.15);
+            padding: 10px 20px;
+            margin: 20px 0;
+        }
+
+        .battle-stage {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: rgba(0,0,0,0.9);
+            border-bottom: 4px solid #00FFFF;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 255, 255, 0.4);
+        }
+
+        [data-testid="stMetricValue"] {
+            color: #00FF66 !important;
+            text-shadow: 0 0 10px #00FF66;
+            font-family: 'Vt323', monospace !important;
+            font-size: 2.2rem !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# 3. TOP ANIMATION BAR (Battle Stage)
+st.markdown("""
+    <div class="battle-stage">
+        <img src="https://www.fightersgeneration.com/characters4/scorpion-classic-stance.gif" height="100">
+        <div>
+            <div class="emergency-header">警告_TRACK_LOADED</div>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg" class="spotify-vinyl" style="display: block; margin: auto;">
+        </div>
+        <img src="https://www.fightersgeneration.com/characters4/subzero-classic-stance.gif" height="100">
+    </div>
+""", unsafe_allow_html=True)
+
+# 4. Data Loading
 @st.cache_data
-def load_tracks(file_path: str):
-    """Loads and sanitizes the track database."""
-    if not Path(file_path).is_file():
-        return None
-
+def load_data():
     try:
-        df = pd.read_csv(file_path)
-        # Standardize headers: lowercase, no spaces
-        df.columns = [str(c).strip().lower().replace(" ", "_") for c in df.columns]
-        
-        # Ensure critical columns exist to prevent downstream crashes
-        required_cols = ['popularity', 'danceability', 'energy']
-        for col in required_cols:
-            if col not in df.columns:
-                df[col] = 0.0
-        
+        df = pd.read_csv("tracks.csv")
+        df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
         return df
     except Exception as e:
-        st.error(f"DATA_LINK_CORRUPTED: {e}")
-        return None
+        st.error(f"SYSTEM FAILURE: {e}")
+        return pd.DataFrame()
 
-# --- 3. UI COMPONENTS ---
-def render_header(station, pilot):
-    """Renders the top HUD with XSS protection."""
-    # SECURITY: Escape user input to prevent HTML injection
-    safe_station = html.escape(station)
-    safe_pilot = html.escape(pilot)
+df_raw = load_data()
 
-    st.markdown(f"""
-        <div style="display: flex; justify-content: space-between; align-items: center; 
-                    background: #000; padding: 20px; border-bottom: 4px solid #00FFFF; margin-bottom: 25px;">
-            <div style="display: flex; align-items: center; gap: 20px;">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg" class="radio-disc">
-                <div>
-                    <h1 style="margin:0; font-size: 1.8rem;">{safe_station}</h1>
-                    <p class="status-glow">● BROADCAST_LIVE // NIGHT_CITY_RADIO</p>
-                </div>
-            </div>
-            <div style="text-align: right;">
-                <p style="margin:0; color:#FF00FF; font-family: 'Orbitron';">USER: {safe_pilot}</p>
-                <p style="margin:0; font-size: 0.7rem; color:#666;">DECK_VER: NC_SECURE_2.0</p>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-# --- 4. MAIN APP ---
-apply_night_city_theme()
-df_raw = load_tracks("tracks.csv")
-
-if df_raw is not None:
-    # Identify the track title column dynamically
-    name_options = ['track_name', 'name', 'track_title', 'title']
-    title_col = next((col for col in name_options if col in df_raw.columns), df_raw.columns[0])
-
-    # Sidebar Controls
-    st.sidebar.markdown("### DECK_CONTROLS")
-    station_choice = st.sidebar.selectbox("STATION", ["MORRO_ROCK_RADIO", "BODY_HEAT_NC", "VEXELSTROM"])
-    pilot_alias = st.sidebar.text_input("NETRUNNER_ID", value="V", max_chars=20)
+# 5. Dashboard Logic
+if not df_raw.empty:
+    # Column identification
+    genre_col = 'track_genre' if 'track_genre' in df_raw.columns else df_raw.columns[0]
+    name_col = 'track_name' if 'track_name' in df_raw.columns else df_raw.columns[1]
     
-    all_titles = sorted(df_raw[title_col].unique().astype(str))
-    selected_songs = st.sidebar.multiselect(
-        "QUEUE_ENCRYPTION", 
-        options=all_titles, 
-        default=all_titles[:3] if len(all_titles) >= 3 else all_titles
+    # Sidebar - Individual Song Selection
+    st.sidebar.markdown("<h2 style='color:#00FFFF;'>TRACK_SELECTOR</h2>", unsafe_allow_html=True)
+    pilot_id = st.sidebar.text_input("NETRUNNER_ID:", "DAVID_MARTINEZ_01")
+    
+    # Sort titles and allow selection
+    all_tracks = sorted(df_raw[name_col].unique().astype(str))
+    selected_tracks = st.sidebar.multiselect(
+        "SELECT_TARGET_SONGS:", 
+        options=all_tracks, 
+        default=all_tracks[0:5] if len(all_tracks) > 5 else all_tracks
     )
     
-    # Filter and display
-    df_filtered = df_raw[df_raw[title_col].isin(selected_songs)]
-    render_header(station_choice, pilot_alias)
+    # Filter by chosen titles
+    df = df_raw[df_raw[name_col].isin(selected_tracks)]
+    
+    # Main Header
+    st.markdown(f"<h1 style='text-align:center; color:#ffffff;'>{pilot_id} // AUDIO_KOMBAT</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; color:#00FFFF;'>STATUS: TARGETING_TRACKS // GRID: STABLE</p>", unsafe_allow_html=True)
 
-    if not df_filtered.empty:
-        # Analytics HUD
-        st.markdown("### 📊 SIGNAL_STRENGTH")
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("TRACKS", len(df_filtered))
-        m2.metric("HYPED", f"{df_filtered['popularity'].mean():.1f}")
-        m3.metric("SYNC", f"{df_filtered['danceability'].mean()*100:.0f}%")
-        m4.metric("CHROME", f"{df_filtered['energy'].mean()*100:.0f}%")
+    # 6. Metrics
+    st.markdown('<p class="section-header">TARGET_DATA_FEED</p>', unsafe_allow_html=True)
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("TRACKS", len(df))
+    m2.metric("AVG_POWER", f"{df['popularity'].mean():.1f}" if not df.empty else "0")
+    m3.metric("SYNC_RATE", f"{df['danceability'].mean()*100:.1f}%" if not df.empty else "0%")
+    m4.metric("KI_ENERGY", f"{df['energy'].mean()*100:.1f}%" if not df.empty else "0%")
 
-        # Visualizers
-        st.divider()
-        v1, v2 = st.columns(2)
-        chart_theme = {'template': "plotly_dark", 'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)', 'font_color': "#00FFFF"}
+    # 7. Neon Charts
+    st.divider()
+    c1, c2 = st.columns(2)
+    cyber_palette = ["#00FFFF", "#FF00FF", "#A065D4", "#FF6600", "#FF0033"]
 
-        with v1:
-            st.markdown("### KINETIC_SYNC")
-            fig1 = px.scatter(df_filtered, x="danceability", y="popularity", color=title_col,
-                             color_discrete_sequence=["#FF00FF", "#00FFFF", "#00FF66"])
-            fig1.update_layout(**
+    with c1:
+        # Scatter Plot uses titles as the label
+        fig1 = px.scatter(df, x="danceability", y="popularity", 
+                         color=name_col, 
+                         hover_name=name_col,
+                         title="KINETIC_SYNC (TRACK_POSITIONING)", 
+                         color_discrete_sequence=cyber_palette)
+        fig1.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig1, use_container_width=True)
+
+    with c2:
+        # Energy Waveform by specific Title
+        fig2 = px.bar(df, x=name_col, y=["energy", "danceability"], barmode="group",
+                     title="WAVEFORM_ENERGY_BY_TRACK", 
+                     color_discrete_sequence=["#FF00FF", "#00FFFF"]) 
+        fig2.update_layout(
+            template="plotly_dark", 
+            paper_bgcolor='rgba(0,0,0,0)', 
+            plot_bgcolor='rgba(0,0,0,0)',
+            xaxis_tickangle=-45,
+            showlegend=True
+        )
+        st.plotly_chart(fig2, use_container_width=True)
+
+    # 8. Data Table
+    st.markdown('<p class="section-header">CHROMED_ARCHIVE_LOGS</p>', unsafe_allow_html=True)
+    st.dataframe(df, use_container_width=True)
+    
+    st.markdown("<br><p style='text-align:center; font-size:0.8rem; color:#888;'>'Never fade away, Netrunner.'</p>", unsafe_allow_html=True)
+
+else:
+    st.error("SYSTEM ERROR: Data Link Severed. Ensure tracks.csv is present.")
