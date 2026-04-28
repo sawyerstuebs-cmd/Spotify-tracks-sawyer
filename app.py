@@ -16,16 +16,16 @@ def apply_night_city_theme():
                             url('https://images.unsplash.com/photo-1605806616949-1e87b487fc2f?q=80&w=2000');
                 background-size: cover;
                 background-attachment: fixed;
-                color: #00FFFF; /* Standard Neon Cyan */
+                color: #00FFFF; 
                 font-family: 'Share Tech Mono', monospace;
             }
 
             /* Unified Glass Panels */
-            [data-testid="stMetric"], .stPlotlyChart, .stDataFrame {
-                background: rgba(10, 10, 10, 0.95) !important;
-                border: 2px solid #FF00FF !important; /* Hot Pink Neon */
+            [data-testid="stMetric"], .stPlotlyChart, .stDataFrame, .stTable {
+                background: rgba(0, 0, 0, 0.95) !important;
+                border: 2px solid #FF00FF !important; 
                 border-radius: 0px !important;
-                box-shadow: 0 0 15px rgba(255, 0, 255, 0.3);
+                padding: 10px;
             }
 
             /* Sidebar Overhaul */
@@ -34,12 +34,15 @@ def apply_night_city_theme():
                 border-right: 2px solid #00FFFF;
             }
             
-            /* Text & Headers */
-            h1, h2, h3 {
+            /* Typography */
+            h1, h2, h3, label, p {
                 font-family: 'Orbitron', sans-serif !important;
+                text-transform: uppercase;
+            }
+            
+            h1, h2, h3 {
                 color: #FF00FF !important;
                 text-shadow: 0 0 10px #FF00FF;
-                text-transform: uppercase;
             }
 
             /* Metric Styling */
@@ -50,77 +53,95 @@ def apply_night_city_theme():
             }
 
             /* Animations */
-            @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-            .radio-active { animation: pulse 1s infinite; color: #00FF66; font-weight: bold; }
-            
             @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
             .radio-disc { width: 80px; animation: spin 4s linear infinite; filter: drop-shadow(0 0 10px #00FFFF); }
+            
+            .status-glow { color: #00FF66; animation: pulse 2s infinite; font-weight: bold; }
+            @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
         </style>
     """, unsafe_allow_html=True)
 
-# --- 2. UI COMPONENTS ---
-def render_radio_header(station_name, user_id):
+# --- 2. DATA ENGINE (The "Fix") ---
+@st.cache_data
+def load_tracks():
+    try:
+        # Attempt to load the CSV
+        df = pd.read_csv("tracks.csv")
+        # Clean column names (strip whitespace, lowercase, underscores)
+        df.columns = [str(c).strip().lower().replace(" ", "_") for c in df.columns]
+        
+        # Ensure numerical columns exist or create dummy data for visualization
+        cols = df.columns
+        if 'popularity' not in cols: df['popularity'] = 50
+        if 'danceability' not in cols: df['danceability'] = 0.5
+        if 'energy' not in cols: df['energy'] = 0.5
+        
+        return df
+    except FileNotFoundError:
+        # If file is missing, create a small sample so the app doesn't crash
+        st.error("⚠️ DATA LINK SEVERED: 'tracks.csv' not found. Loading emergency buffer...")
+        data = {
+            'track_name': ['Resist and Disorder', 'Never Fade Away', 'Chippin In'],
+            'popularity': [90, 95, 85],
+            'danceability': [0.7, 0.6, 0.8],
+            'energy': [0.9, 0.8, 0.95]
+        }
+        return pd.DataFrame(data)
+
+# --- 3. UI COMPONENTS ---
+def render_header(station, pilot):
     st.markdown(f"""
         <div style="display: flex; justify-content: space-between; align-items: center; 
                     background: #000; padding: 20px; border-bottom: 4px solid #00FFFF; margin-bottom: 25px;">
             <div style="display: flex; align-items: center; gap: 20px;">
                 <img src="https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg" class="radio-disc">
                 <div>
-                    <h1 style="margin:0;">{station_name}</h1>
-                    <p class="radio-active">● SIGNAL_STRENGTH: MAXIMUM</p>
+                    <h1 style="margin:0;">{station}</h1>
+                    <p class="status-glow">● SIGNAL_STRENGTH: OPTIMAL</p>
                 </div>
             </div>
             <div style="text-align: right;">
-                <p style="margin:0; color:#FF00FF;">NETRUNNER_AUTH: {user_id}</p>
-                <p style="margin:0; font-size: 0.8rem; color:#666;">LOCATION: WATSON_DISTRICT</p>
+                <p style="margin:0; color:#FF00FF;">ID: {pilot}</p>
+                <p style="margin:0; font-size: 0.7rem; color:#666;">GRID_LOC: NC_WATSON_01</p>
             </div>
         </div>
     """, unsafe_allow_html=True)
-
-# --- 3. DATA & LOGIC ---
-@st.cache_data
-def load_tracks():
-    try:
-        df = pd.read_csv("tracks.csv")
-        df.columns = df.columns.str.strip().lower().str.replace(" ", "_")
-        return df
-    except:
-        return pd.DataFrame()
 
 # --- 4. MAIN APP ---
 apply_night_city_theme()
 df_raw = load_tracks()
 
 if not df_raw.empty:
-    name_col = 'track_name' if 'track_name' in df_raw.columns else df_raw.columns[1]
+    # Dynamically find the name column
+    name_col = 'track_name' if 'track_name' in df_raw.columns else df_raw.columns[0]
 
     # Sidebar 
-    st.sidebar.markdown("### RADIO_CONTROL")
-    station = st.sidebar.selectbox("STATION_SELECT", ["MORRO_ROCK_107.3", "BODY_HEAT_RADIO", "PEBBLE_DASH"])
-    pilot = st.sidebar.text_input("USER_ALIAS", "V_001")
+    st.sidebar.markdown("### RADIO_DECK_v1")
+    station_choice = st.sidebar.selectbox("FREQ_SELECT", ["MORRO_ROCK_107.3", "BODY_HEAT", "VEXELSTROM"])
+    pilot_alias = st.sidebar.text_input("NETRUNNER_ALIAS", "V")
     
     # Filter Logic
     all_songs = sorted(df_raw[name_col].unique().astype(str))
-    selected = st.sidebar.multiselect("QUEUE_TRACKS", all_songs, default=all_songs[:3])
-    df = df_raw[df_raw[name_col].isin(selected)]
+    selected = st.sidebar.multiselect("QUEUE_ENCRYPTION", all_songs, default=all_songs[:3] if len(all_songs) >= 3 else all_songs)
+    
+    df_filtered = df_raw[df_raw[name_col].isin(selected)]
 
-    # Layout
-    render_radio_header(station, pilot)
+    # Header
+    render_header(station_choice, pilot_alias)
 
-    # Analytics Row
-    st.markdown("### 📻 FREQUENCY_READOUT")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("TRACK_COUNT", len(df))
-    col2.metric("HYPED_INDEX", f"{df['popularity'].mean():.1f}")
-    col3.metric("BPM_SYNC", f"{df['danceability'].mean()*100:.0f}%")
-    col4.metric("CHROME_LEVEL", f"{df['energy'].mean()*100:.0f}%")
+    # Analytics
+    st.markdown("### 📊 SIGNAL_METRICS")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("TRACKS", len(df_filtered))
+    m2.metric("HYPED", f"{df_filtered['popularity'].mean():.1f}")
+    m3.metric("SYNC", f"{df_filtered['danceability'].mean()*100:.0f}%")
+    m4.metric("KI_ENERGY", f"{df_filtered['energy'].mean()*100:.0f}%")
 
-    # Visualizer Row
+    # Visuals
     st.divider()
     v1, v2 = st.columns(2)
     
-    # Unified Plotly Theme
-    plotly_config = {
+    chart_style = {
         'template': "plotly_dark",
         'paper_bgcolor': 'rgba(0,0,0,0)',
         'plot_bgcolor': 'rgba(0,0,0,0)',
@@ -128,24 +149,21 @@ if not df_raw.empty:
     }
 
     with v1:
-        st.markdown("### SIGNAL_POSITIONING")
-        fig1 = px.scatter(df, x="danceability", y="popularity", color=name_col,
-                         color_discrete_sequence=["#FF00FF", "#00FFFF", "#00FF66", "#FFCC00"])
-        fig1.update_layout(**plotly_config)
+        st.markdown("### KINETIC_WAVEFORM")
+        fig1 = px.scatter(df_filtered, x="danceability", y="popularity", color=name_col,
+                         color_discrete_sequence=["#FF00FF", "#00FFFF", "#00FF66"])
+        fig1.update_layout(**chart_style)
         st.plotly_chart(fig1, use_container_width=True)
 
     with v2:
-        st.markdown("### WAVEFORM_DISTORTION")
-        fig2 = px.bar(df, x=name_col, y=["energy", "danceability"], barmode="group",
+        st.markdown("### POWER_DISTRIBUTION")
+        fig2 = px.bar(df_filtered, x=name_col, y=["energy", "danceability"], barmode="group",
                      color_discrete_sequence=["#FF00FF", "#00FFFF"])
-        fig2.update_layout(**plotly_config, xaxis={'tickangle': -45})
+        fig2.update_layout(**chart_style)
         st.plotly_chart(fig2, use_container_width=True)
 
-    # Archive
-    st.markdown("### ENCRYPTED_PLAYLIST_DATA")
-    st.dataframe(df, use_container_width=True)
+    # Data Archive
+    st.markdown("### 📂 ARCHIVE_LOGS")
+    st.dataframe(df_filtered, use_container_width=True)
     
-    st.markdown("<p style='text-align:center; color:#666; margin-top:40px;'>Good morning, Night City! Yesterday's body count rounded out to a solid and sturdy thirty!</p>", unsafe_allow_html=True)
-
-else:
-    st.error("FATAL_ERROR: tracks.csv not found in local deck.")
+    st.markdown("<p style='text-align:center; color:#444; margin-top:50px;'>'Wrong city, wrong people.' — Johnny Silverhand</p>", unsafe_allow_html=True)
