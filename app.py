@@ -5,27 +5,48 @@ import plotly.express as px
 # 1. Page Config
 st.set_page_config(page_title="NIGHT CITY ANALYTICS", page_icon="🏙️", layout="wide")
 
-# 2. Cyberpunk Glassmorphism & Neon UI CSS
+# 2. Advanced CSS: Purple/Black Sidebar & Neon High-Contrast
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Share+Tech+Mono&family=Vt323&display=swap');
 
-        /* 🏙️ DYNAMIC CYBERPUNK CITY BACKGROUND */
+        /* 🏙️ BACKGROUND */
         .stApp {
-            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+            background: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), 
                         url('https://images.unsplash.com/photo-1605806616949-1e87b487fc2f?q=80&w=2070&auto=format&fit=crop');
             background-size: cover;
             background-attachment: fixed;
             color: #ffffff;
         }
 
-        /* 🧪 GLASSMORPHISM CONTAINERS */
+        /* 💜 PURPLE NEON SIDEBAR OVERHAUL */
+        [data-testid="stSidebar"] {
+            background-color: #000000 !important;
+            border-right: 2px solid #A065D4;
+            box-shadow: 5px 0 15px rgba(160, 101, 212, 0.3);
+        }
+        
+        /* Targets the multiselect and input boxes in the sidebar */
+        [data-testid="stSidebar"] .stMultiSelect, [data-testid="stSidebar"] .stTextInput {
+            background-color: #1a0033 !important;
+            border: 1px solid #A065D4 !important;
+            border-radius: 5px;
+            color: #ffffff !important;
+        }
+        
+        [data-testid="stSidebar"] p, [data-testid="stSidebar"] label {
+            color: #A065D4 !important;
+            font-family: 'Orbitron', sans-serif !important;
+            text-shadow: 0 0 5px #A065D4;
+        }
+
+        /* 🧪 GLASSMORPHISM CONTAINERS - High Contrast Black */
         [data-testid="stMetric"], .stDataFrame, .stPlotlyChart {
-            background: rgba(0, 0, 0, 0.8) !important;
-            border: 1px solid rgba(0, 255, 255, 0.4);
+            background: #000000 !important; /* Pure Black for maximum contrast */
+            border: 2px solid #00FFFF;
             border-radius: 12px;
             padding: 15px;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.2);
         }
 
         /* 🌀 ANIMATION: Neon Spinning Spotify Vinyl */
@@ -55,8 +76,8 @@ st.markdown("""
         .section-header {
             font-size: 1.1rem;
             color: #00FFFF;
-            border-left: 6px solid #FF00FF;
-            background: rgba(255, 0, 255, 0.15);
+            border-left: 6px solid #A065D4;
+            background: rgba(160, 101, 212, 0.2);
             padding: 10px 20px;
             margin: 20px 0;
         }
@@ -65,10 +86,10 @@ st.markdown("""
             display: flex;
             justify-content: space-around;
             align-items: center;
-            background: rgba(0,0,0,0.9);
-            border-bottom: 4px solid #00FFFF;
+            background: #000000;
+            border-bottom: 4px solid #A065D4;
             padding: 20px;
-            box-shadow: 0 10px 40px rgba(0, 255, 255, 0.4);
+            box-shadow: 0 10px 40px rgba(160, 101, 212, 0.4);
         }
 
         [data-testid="stMetricValue"] {
@@ -80,12 +101,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. TOP ANIMATION BAR (Battle Stage)
+# 3. TOP ANIMATION BAR
 st.markdown("""
     <div class="battle-stage">
         <img src="https://www.fightersgeneration.com/characters4/scorpion-classic-stance.gif" height="100">
         <div>
-            <div class="emergency-header">警告_TRACK_LOADED</div>
+            <div class="emergency-header">警告_SYNC_LOCKED</div>
             <img src="https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg" class="spotify-vinyl" style="display: block; margin: auto;">
         </div>
         <img src="https://www.fightersgeneration.com/characters4/subzero-classic-stance.gif" height="100">
@@ -107,28 +128,22 @@ df_raw = load_data()
 
 # 5. Dashboard Logic
 if not df_raw.empty:
-    # Column identification
-    genre_col = 'track_genre' if 'track_genre' in df_raw.columns else df_raw.columns[0]
     name_col = 'track_name' if 'track_name' in df_raw.columns else df_raw.columns[1]
     
-    # Sidebar - Individual Song Selection
-    st.sidebar.markdown("<h2 style='color:#00FFFF;'>TRACK_SELECTOR</h2>", unsafe_allow_html=True)
+    # Sidebar - Purple Neon Track Selector
+    st.sidebar.markdown("<h2 style='color:#A065D4;'>TRACK_SELECTOR</h2>", unsafe_allow_html=True)
     pilot_id = st.sidebar.text_input("NETRUNNER_ID:", "DAVID_MARTINEZ_01")
     
-    # Sort titles and allow selection
     all_tracks = sorted(df_raw[name_col].unique().astype(str))
     selected_tracks = st.sidebar.multiselect(
         "SELECT_TARGET_SONGS:", 
         options=all_tracks, 
-        default=all_tracks[0:5] if len(all_tracks) > 5 else all_tracks
+        default=all_tracks[0:3] if len(all_tracks) > 3 else all_tracks
     )
     
-    # Filter by chosen titles
     df = df_raw[df_raw[name_col].isin(selected_tracks)]
     
-    # Main Header
     st.markdown(f"<h1 style='text-align:center; color:#ffffff;'>{pilot_id} // AUDIO_KOMBAT</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:#00FFFF;'>STATUS: TARGETING_TRACKS // GRID: STABLE</p>", unsafe_allow_html=True)
 
     # 6. Metrics
     st.markdown('<p class="section-header">TARGET_DATA_FEED</p>', unsafe_allow_html=True)
@@ -138,32 +153,38 @@ if not df_raw.empty:
     m3.metric("SYNC_RATE", f"{df['danceability'].mean()*100:.1f}%" if not df.empty else "0%")
     m4.metric("KI_ENERGY", f"{df['energy'].mean()*100:.1f}%" if not df.empty else "0%")
 
-    # 7. Neon Charts
+    # 7. Neon Charts - High Contrast
     st.divider()
     c1, c2 = st.columns(2)
-    cyber_palette = ["#00FFFF", "#FF00FF", "#A065D4", "#FF6600", "#FF0033"]
+    # Brightest Neon Colors for Black Contrast
+    cyber_palette = ["#FF00FF", "#00FFFF", "#00FF66", "#FFCC00", "#FF0033"]
 
     with c1:
-        # Scatter Plot uses titles as the label
         fig1 = px.scatter(df, x="danceability", y="popularity", 
                          color=name_col, 
                          hover_name=name_col,
-                         title="KINETIC_SYNC (TRACK_POSITIONING)", 
+                         title="KINETIC_POSITIONING", 
                          color_discrete_sequence=cyber_palette)
-        fig1.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+        # Setting background to solid black and increasing grid line visibility
+        fig1.update_layout(
+            template="plotly_dark", 
+            paper_bgcolor='#000000', 
+            plot_bgcolor='#000000',
+            xaxis=dict(gridcolor='#333333', zerolinecolor='#555555'),
+            yaxis=dict(gridcolor='#333333', zerolinecolor='#555555')
+        )
         st.plotly_chart(fig1, use_container_width=True)
 
     with c2:
-        # Energy Waveform by specific Title
         fig2 = px.bar(df, x=name_col, y=["energy", "danceability"], barmode="group",
-                     title="WAVEFORM_ENERGY_BY_TRACK", 
+                     title="ENERGY_WAVEFORM", 
                      color_discrete_sequence=["#FF00FF", "#00FFFF"]) 
         fig2.update_layout(
             template="plotly_dark", 
-            paper_bgcolor='rgba(0,0,0,0)', 
-            plot_bgcolor='rgba(0,0,0,0)',
-            xaxis_tickangle=-45,
-            showlegend=True
+            paper_bgcolor='#000000', 
+            plot_bgcolor='#000000',
+            xaxis=dict(gridcolor='#333333', tickangle=-45),
+            yaxis=dict(gridcolor='#333333')
         )
         st.plotly_chart(fig2, use_container_width=True)
 
@@ -174,4 +195,4 @@ if not df_raw.empty:
     st.markdown("<br><p style='text-align:center; font-size:0.8rem; color:#888;'>'Never fade away, Netrunner.'</p>", unsafe_allow_html=True)
 
 else:
-    st.error("SYSTEM ERROR: Data Link Severed. Ensure tracks.csv is present.")
+    st.error("SYSTEM ERROR: Data Link Severed.")
