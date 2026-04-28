@@ -1,0 +1,11 @@
+import pandas as pd
+
+# Load your big file
+df = pd.read_csv("tracks.csv")
+
+# Take a random sample (e.g., 20,000 rows is plenty for a dashboard)
+# This will significantly shrink the file size
+df_small = df.sample(n=20000)
+
+# Save the new, smaller version
+df_small.to_csv("tracks_small.csv", index=False)
