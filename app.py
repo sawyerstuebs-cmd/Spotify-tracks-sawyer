@@ -1,251 +1,166 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>TMNT 2003: PURPLE NYC NIGHTS</title>
-    <style>
-        body { margin: 0; background: #0a0515; overflow: hidden; font-family: 'Orbitron', sans-serif; color: #a0f; }
-        canvas { display: block; }
-        #ui { position: absolute; top: 20px; left: 20px; background: rgba(20, 10, 40, 0.85); padding: 15px; border: 2px solid #a0f; box-shadow: 0 0 15px #a0f; pointer-events: none; z-index: 100; border-radius: 5px; }
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    </style>
-</head>
-<body>
-    <div id="ui">
-        [ SECTOR <span id="lvl">1</span> ] <br>
-        NEO-NYC: VIOLET DISTRICT<br>
-        [ARROWS] MOVE/AIM | [S] THROW SAI
-    </div>
-    <canvas id="gameCanvas"></canvas>
+import streamlit as st
+import pandas as pd
+import plotly.express as px
 
-<script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+# --- 1. CORE THEME & CSS ---
+st.set_page_config(page_title="NIGHT CITY RADIO", page_icon="📻", layout="wide")
 
-let width, height, rooftopBase;
-let currentLevel = 1;
-let levelData = [];
-let enemies = [];
-let bullets = []; 
-let cameraX = 0;
-let animTick = 0;
-let speechTimer = 0;
-let screenShake = 0;
+def apply_night_city_theme():
+    st.markdown("""
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Share+Tech+Mono&display=swap');
 
-const player = {
-    x: 100, y: 0, w: 50, h: 60,
-    vx: 0, vy: 0, speed: 2.2, jumpForce: -20,
-    grounded: false, color: '#2e5a1c', mask: '#ff0000', shell: '#5c4033'
-};
-
-const keys = {};
-
-const backgroundBuildings = [];
-for(let i=0; i<40; i++) {
-    backgroundBuildings.push({
-        x: i * 400, w: 250 + Math.random() * 200, h: 400 + Math.random() * 600,
-        color: i % 2 === 0 ? '#150a25' : '#1a0d30', parallax: 0.3,
-        windows: Math.random() > 0.5
-    });
-}
-
-function generateLevel(num) {
-    levelData = []; enemies = []; bullets = [];
-    const length = 60 + (num * 3);
-    
-    // Safety Floor (The "Street" underneath)
-    levelData.push({ x: -1000, y: height - 50, w: length * 350, h: 200, type: 'street' });
-
-    for (let i = 0; i < length; i++) {
-        let isGap = i > 4 && Math.random() < 0.25;
-        if (!isGap) {
-            let ry = height * 0.5 + (Math.random() * 200);
-            levelData.push({ x: i * 300, y: ry, w: 260, h: height, type: 'roof' });
-            if (i > 5 && Math.random() < 0.35) {
-                enemies.push({ x: i * 300 + 100, y: ry - 100, phase: Math.random() * 6 });
+            /* Global Styles */
+            .stApp {
+                background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)), 
+                            url('https://images.unsplash.com/photo-1605806616949-1e87b487fc2f?q=80&w=2000');
+                background-size: cover;
+                background-attachment: fixed;
+                color: #00FFFF; 
+                font-family: 'Share Tech Mono', monospace;
             }
-        }
+
+            /* Unified Glass Panels */
+            [data-testid="stMetric"], .stPlotlyChart, .stDataFrame {
+                background: rgba(0, 0, 0, 0.95) !important;
+                border: 2px solid #FF00FF !important; 
+                border-radius: 0px !important;
+                box-shadow: 0 0 15px rgba(255, 0, 255, 0.2);
+            }
+
+            /* Sidebar Overhaul */
+            [data-testid="stSidebar"] {
+                background-color: #000000 !important;
+                border-right: 2px solid #00FFFF;
+            }
+            
+            /* Headers & Labels */
+            h1, h2, h3, label {
+                font-family: 'Orbitron', sans-serif !important;
+                text-transform: uppercase;
+                color: #FF00FF !important;
+                text-shadow: 0 0 8px #FF00FF;
+            }
+
+            /* Metric Styling */
+            [data-testid="stMetricValue"] {
+                color: #00FF66 !important;
+                text-shadow: 0 0 10px #00FF66;
+                font-size: 2.5rem !important;
+            }
+
+            /* Animations */
+            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            .radio-disc { width: 70px; animation: spin 4s linear infinite; filter: drop-shadow(0 0 10px #00FFFF); }
+            
+            .status-glow { color: #00FF66; animation: pulse 2s infinite; font-weight: bold; font-size: 0.8rem; }
+            @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        </style>
+    """, unsafe_allow_html=True)
+
+# --- 2. DATA ENGINE ---
+@st.cache_data
+def load_tracks():
+    try:
+        df = pd.read_csv("tracks.csv")
+        # Standardize column names
+        df.columns = [str(c).strip().lower().replace(" ", "_") for c in df.columns]
+        
+        # Ensure fallback columns if missing
+        for col in ['popularity', 'danceability', 'energy']:
+            if col not in df.columns:
+                df[col] = 0
+        
+        return df
+    except Exception as e:
+        st.error(f"SIGNAL INTERRUPTED: {e}")
+        return pd.DataFrame()
+
+# --- 3. UI COMPONENTS ---
+def render_header(station, pilot):
+    st.markdown(f"""
+        <div style="display: flex; justify-content: space-between; align-items: center; 
+                    background: #000; padding: 20px; border-bottom: 4px solid #00FFFF; margin-bottom: 25px;">
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg" class="radio-disc">
+                <div>
+                    <h1 style="margin:0; font-size: 1.8rem;">{station}</h1>
+                    <p class="status-glow">● BROADCAST_LIVE // NIGHT_CITY_RADIO</p>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <p style="margin:0; color:#FF00FF; font-family: 'Orbitron';">USER: {pilot}</p>
+                <p style="margin:0; font-size: 0.7rem; color:#666;">DECK_VER: NC_RADIO_FINAL</p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+# --- 4. MAIN APP ---
+apply_night_city_theme()
+df_raw = load_tracks()
+
+if not df_raw.empty:
+    # Identify the track name column automatically
+    name_options = ['track_name', 'name', 'track_title', 'title']
+    title_col = next((col for col in name_options if col in df_raw.columns), df_raw.columns[0])
+
+    # --- SIDEBAR CONTROLS ---
+    st.sidebar.markdown("### DECK_CONTROLS")
+    station_choice = st.sidebar.selectbox("STATION", ["MORRO_ROCK_RADIO", "BODY_HEAT_NC", "VEXELSTROM"])
+    pilot_alias = st.sidebar.text_input("NETRUNNER_ID", "V")
+    
+    # Filter selection using Song Names
+    all_titles = sorted(df_raw[title_col].unique().astype(str))
+    selected_songs = st.sidebar.multiselect(
+        "QUEUE_ENCRYPTION (BY_TITLE)", 
+        options=all_titles, 
+        default=all_titles[:3] if len(all_titles) >= 3 else all_titles
+    )
+    
+    df_filtered = df_raw[df_raw[title_col].isin(selected_songs)]
+
+    # Layout
+    render_header(station_choice, pilot_alias)
+
+    # Analytics Row
+    st.markdown("### 📊 SIGNAL_STRENGTH")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("TRACKS", len(df_filtered))
+    m2.metric("HYPED", f"{df_filtered['popularity'].mean():.1f}" if not df_filtered.empty else "0")
+    m3.metric("SYNC", f"{df_filtered['danceability'].mean()*100:.0f}%" if not df_filtered.empty else "0%")
+    m4.metric("CHROME", f"{df_filtered['energy'].mean()*100:.0f}%" if not df_filtered.empty else "0%")
+
+    # Visualizer Row
+    st.divider()
+    v1, v2 = st.columns(2)
+    
+    chart_theme = {
+        'template': "plotly_dark",
+        'paper_bgcolor': 'rgba(0,0,0,0)',
+        'plot_bgcolor': 'rgba(0,0,0,0)',
+        'font_color': "#00FFFF"
     }
-    levelData.push({ x: length * 300, y: height * 0.5, w: 400, h: height, type: 'goal' });
-}
 
-function resize() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
-    generateLevel(currentLevel);
-}
-window.addEventListener('resize', resize);
-resize();
+    with v1:
+        st.markdown("### KINETIC_SYNC")
+        fig1 = px.scatter(df_filtered, x="danceability", y="popularity", color=title_col,
+                         color_discrete_sequence=["#FF00FF", "#00FFFF", "#00FF66", "#FFCC00"])
+        fig1.update_layout(**chart_theme)
+        st.plotly_chart(fig1, use_container_width=True)
 
-window.addEventListener('keydown', e => {
-    keys[e.code] = true;
-    if(e.code === 'KeyS') shoot();
-});
-window.addEventListener('keyup', e => keys[e.code] = false);
+    with v2:
+        st.markdown("### POWER_DISTRIBUTION")
+        # Bar Chart labels set to track names (title_col)
+        fig2 = px.bar(df_filtered, x=title_col, y=["energy", "danceability"], barmode="group",
+                     color_discrete_sequence=["#FF00FF", "#00FFFF"])
+        fig2.update_layout(**chart_theme, xaxis={'tickangle': -45, 'title': ''})
+        st.plotly_chart(fig2, use_container_width=True)
 
-function shoot() {
-    let vx = 0, vy = 0;
-    if (keys['ArrowUp']) vy = -18;
-    else if (keys['ArrowDown']) vy = 18;
-    else vx = 18 * (player.vx >= 0 ? 1 : -1);
-    if (vx === 0 && vy === 0) vx = 18;
-    bullets.push({ x: player.x + 25, y: player.y + 20, vx, vy, rotation: 0 });
-}
-
-function update() {
-    if (keys['ArrowRight']) { player.vx += player.speed; }
-    if (keys['ArrowLeft']) { player.vx -= player.speed; }
-    player.vx *= 0.88; player.x += player.vx;
-    player.vy += 0.85; player.y += player.vy;
-
-    player.grounded = false;
-    levelData.forEach(tile => {
-        if (player.x + player.w > tile.x && player.x < tile.x + tile.w &&
-            player.y + player.h > tile.y && player.y + player.h < tile.y + player.vy + 15) {
-            player.y = tile.y - player.h; player.vy = 0; player.grounded = true;
-            if (tile.type === 'goal') nextLevel();
-        }
-    });
-
-    if (keys['ArrowUp'] && player.grounded) { player.vy = player.jumpForce; player.grounded = false; }
-
-    enemies.forEach((en, i) => {
-        en.y += Math.sin(Date.now()/300 + en.phase) * 1.2;
-        bullets.forEach((b, bi) => {
-            if (b.x > en.x && b.x < en.x+60 && b.y > en.y && b.y < en.y+60) {
-                enemies.splice(i, 1); bullets.splice(bi, 1);
-                speechTimer = 60; screenShake = 10;
-            }
-        });
-    });
-
-    cameraX += (player.x - cameraX - width / 3) * 0.1;
-    bullets.forEach((b, i) => { 
-        b.x += b.vx; b.y += b.vy; b.rotation += 0.5;
-        if(Math.abs(b.x-player.x)>2000) bullets.splice(i,1); 
-    });
+    # Data Logs
+    st.markdown("### 📂 ARCHIVE_LOGS")
+    st.dataframe(df_filtered, use_container_width=True)
     
-    if (speechTimer > 0) speechTimer--;
-    if (screenShake > 0) screenShake *= 0.9;
-    animTick++;
-}
+    st.markdown("<p style='text-align:center; color:#444; margin-top:50px;'>'Wrong city, wrong people.' — Johnny Silverhand</p>", unsafe_allow_html=True)
 
-function drawBackground() {
-    // Purple Night Gradient
-    let grd = ctx.createLinearGradient(0,0,0,height);
-    grd.addColorStop(0, "#0a0515");
-    grd.addColorStop(1, "#2a1040");
-    ctx.fillStyle = grd;
-    ctx.fillRect(0,0,width,height);
-
-    backgroundBuildings.forEach(b => {
-        let px = (b.x - cameraX * b.parallax) % (backgroundBuildings.length * 400);
-        if (px < -600) px += backgroundBuildings.length * 400;
-        ctx.fillStyle = b.color;
-        ctx.fillRect(px, height - b.h, b.w, b.h);
-        
-        // Window lights
-        if(b.windows) {
-            ctx.fillStyle = "#80f4ff22";
-            for(let r=0; r<6; r++) {
-                for(let c=0; c<4; c++) {
-                    ctx.fillRect(px + 20 + c*40, height - b.h + 40 + r*60, 15, 25);
-                }
-            }
-        }
-    });
-}
-
-function drawSpeechBubble(x, y) {
-    ctx.save();
-    ctx.translate(x + 50, y - 40);
-    ctx.fillStyle = "white"; ctx.strokeStyle = "black"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(120,0); ctx.lineTo(120,-40); ctx.lineTo(0,-40); ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(0,15); ctx.lineTo(20,0); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = "purple"; ctx.font = "bold 14px Orbitron"; ctx.textAlign = "center";
-    ctx.fillText("COWABUNGA!", 60, -15);
-    ctx.restore();
-}
-
-function drawRaphael(p) {
-    ctx.save();
-    ctx.translate(p.x + p.w/2, p.y + p.h/2);
-    ctx.scale(p.vx >= 0 ? 1 : -1, 1);
-    ctx.fillStyle = p.shell;
-    ctx.beginPath(); ctx.ellipse(-5, 5, 24, 30, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = p.color;
-    ctx.fillRect(-15, -10, 30, 35);
-    let legMove = Math.sin(animTick * 0.25) * 15;
-    ctx.strokeStyle = p.color; ctx.lineWidth = 7;
-    ctx.beginPath(); ctx.moveTo(-8, 20); ctx.lineTo(-12 - (p.vx?legMove:0), 42); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(8, 20); ctx.lineTo(12 + (p.vx?legMove:0), 42); ctx.stroke();
-    ctx.fillStyle = '#e8c985'; ctx.fillRect(-12, -5, 24, 28);
-    ctx.fillStyle = p.color;
-    ctx.beginPath(); ctx.ellipse(12, -22, 20, 16, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = p.mask; ctx.fillRect(2, -28, 28, 10);
-    ctx.beginPath(); ctx.moveTo(-5, -23); ctx.quadraticCurveTo(-30, -23 + Math.sin(animTick*0.15)*12, -45, -10);
-    ctx.lineWidth = 5; ctx.strokeStyle = p.mask; ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.fillRect(14, -26, 5, 5); ctx.fillRect(23, -26, 5, 5);
-    ctx.restore();
-}
-
-function draw() {
-    drawBackground();
-    ctx.save();
-    let sx = (Math.random() - 0.5) * screenShake;
-    let sy = (Math.random() - 0.5) * screenShake;
-    ctx.translate(-cameraX + sx, sy);
-
-    levelData.forEach(tile => {
-        // Grey and Purple platform scheme
-        ctx.fillStyle = "#201535"; 
-        ctx.strokeStyle = tile.type === 'goal' ? '#ff0' : "#a0f";
-        ctx.lineWidth = 4;
-        ctx.fillRect(tile.x, tile.y, tile.w, tile.h);
-        ctx.strokeRect(tile.x, tile.y, tile.w, tile.h);
-        
-        // Roof detail
-        if(tile.type === 'roof') {
-            ctx.fillStyle = "#150a25";
-            ctx.fillRect(tile.x + 20, tile.y + 10, tile.w - 40, 10);
-        }
-    });
-
-    enemies.forEach(en => {
-        ctx.save();
-        ctx.translate(en.x + 30, en.y + 30);
-        ctx.shadowBlur = 15; ctx.shadowColor = "#0ff";
-        ctx.fillStyle = "#ff00ff";
-        ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI*2); ctx.fill();
-        ctx.restore();
-    });
-
-    drawRaphael(player);
-    bullets.forEach(b => {
-        ctx.save();
-        ctx.translate(b.x, b.y);
-        ctx.rotate(b.rotation);
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(0, 15); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(8, 0); ctx.stroke();
-        ctx.restore();
-    });
-
-    if (speechTimer > 0) drawSpeechBubble(player.x, player.y);
-
-    ctx.restore();
-    update();
-    requestAnimationFrame(draw);
-}
-
-function nextLevel() {
-    currentLevel++;
-    document.getElementById('lvl').innerText = currentLevel;
-    player.x = 100; player.y = 0;
-    generateLevel(currentLevel);
-}
-
-draw();
-</script>
-</body>
-</html>
+else:
+    st.error("FATAL ERROR: Connection to 'tracks.csv' lost.")
