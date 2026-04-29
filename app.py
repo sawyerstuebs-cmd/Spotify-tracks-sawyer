@@ -1,177 +1,251 @@
-import streamlit as st
-import pandas as pd
-import plotly.express as px
-
-# 1. Page Config
-st.set_page_config(page_title="NIGHT CITY ANALYTICS", page_icon="🏙️", layout="wide")
-
-# 2. Cyberpunk Glassmorphism & Neon UI CSS
-st.markdown("""
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TMNT 2003: PURPLE NYC NIGHTS</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Share+Tech+Mono&family=Vt323&display=swap');
-
-        /* 🏙️ DYNAMIC CYBERPUNK CITY BACKGROUND */
-        .stApp {
-            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
-                        url('https://images.unsplash.com/photo-1605806616949-1e87b487fc2f?q=80&w=2070&auto=format&fit=crop');
-            background-size: cover;
-            background-attachment: fixed;
-            color: #ffffff;
-        }
-
-        /* 🧪 GLASSMORPHISM CONTAINERS */
-        [data-testid="stMetric"], .stDataFrame, .stPlotlyChart {
-            background: rgba(0, 0, 0, 0.8) !important;
-            border: 1px solid rgba(0, 255, 255, 0.4);
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-        }
-
-        /* 🌀 ANIMATION: Neon Spinning Spotify Vinyl */
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .spotify-vinyl {
-            width: 70px;
-            animation: spin 3s linear infinite;
-            filter: drop-shadow(0 0 15px #FF00FF);
-        }
-
-        /* 🚨 EMERGENCY HEADER Flicker */
-        @keyframes flicker { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-        .emergency-header {
-            color: #FF0033;
-            font-family: 'Orbitron', sans-serif;
-            text-shadow: 0 0 20px #FF0033;
-            animation: flicker 0.8s infinite;
-            text-align: center;
-            font-size: 2.5rem;
-        }
-
-        h1, h2, .section-header {
-            font-family: 'Orbitron', sans-serif !important;
-            text-shadow: 2px 2px 10px rgba(0, 255, 255, 0.5);
-        }
-
-        .section-header {
-            font-size: 1.1rem;
-            color: #00FFFF;
-            border-left: 6px solid #FF00FF;
-            background: rgba(255, 0, 255, 0.15);
-            padding: 10px 20px;
-            margin: 20px 0;
-        }
-
-        .battle-stage {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            background: rgba(0,0,0,0.9);
-            border-bottom: 4px solid #00FFFF;
-            padding: 20px;
-            box-shadow: 0 10px 40px rgba(0, 255, 255, 0.4);
-        }
-
-        [data-testid="stMetricValue"] {
-            color: #00FF66 !important;
-            text-shadow: 0 0 10px #00FF66;
-            font-family: 'Vt323', monospace !important;
-            font-size: 2.2rem !important;
-        }
+        body { margin: 0; background: #0a0515; overflow: hidden; font-family: 'Orbitron', sans-serif; color: #a0f; }
+        canvas { display: block; }
+        #ui { position: absolute; top: 20px; left: 20px; background: rgba(20, 10, 40, 0.85); padding: 15px; border: 2px solid #a0f; box-shadow: 0 0 15px #a0f; pointer-events: none; z-index: 100; border-radius: 5px; }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
     </style>
-""", unsafe_allow_html=True)
-
-# 3. TOP ANIMATION BAR (Battle Stage)
-st.markdown("""
-    <div class="battle-stage">
-        <img src="https://www.fightersgeneration.com/characters4/scorpion-classic-stance.gif" height="100">
-        <div>
-            <div class="emergency-header">警告_TRACK_LOADED</div>
-            <img src="https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg" class="spotify-vinyl" style="display: block; margin: auto;">
-        </div>
-        <img src="https://www.fightersgeneration.com/characters4/subzero-classic-stance.gif" height="100">
+</head>
+<body>
+    <div id="ui">
+        [ SECTOR <span id="lvl">1</span> ] <br>
+        NEO-NYC: VIOLET DISTRICT<br>
+        [ARROWS] MOVE/AIM | [S] THROW SAI
     </div>
-""", unsafe_allow_html=True)
+    <canvas id="gameCanvas"></canvas>
 
-# 4. Data Loading
-@st.cache_data
-def load_data():
-    try:
-        df = pd.read_csv("tracks.csv")
-        df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
-        return df
-    except Exception as e:
-        st.error(f"SYSTEM FAILURE: {e}")
-        return pd.DataFrame()
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 
-df_raw = load_data()
+let width, height, rooftopBase;
+let currentLevel = 1;
+let levelData = [];
+let enemies = [];
+let bullets = []; 
+let cameraX = 0;
+let animTick = 0;
+let speechTimer = 0;
+let screenShake = 0;
 
-# 5. Dashboard Logic
-if not df_raw.empty:
-    # Column identification
-    genre_col = 'track_genre' if 'track_genre' in df_raw.columns else df_raw.columns[0]
-    name_col = 'track_name' if 'track_name' in df_raw.columns else df_raw.columns[1]
+const player = {
+    x: 100, y: 0, w: 50, h: 60,
+    vx: 0, vy: 0, speed: 2.2, jumpForce: -20,
+    grounded: false, color: '#2e5a1c', mask: '#ff0000', shell: '#5c4033'
+};
+
+const keys = {};
+
+const backgroundBuildings = [];
+for(let i=0; i<40; i++) {
+    backgroundBuildings.push({
+        x: i * 400, w: 250 + Math.random() * 200, h: 400 + Math.random() * 600,
+        color: i % 2 === 0 ? '#150a25' : '#1a0d30', parallax: 0.3,
+        windows: Math.random() > 0.5
+    });
+}
+
+function generateLevel(num) {
+    levelData = []; enemies = []; bullets = [];
+    const length = 60 + (num * 3);
     
-    # Sidebar - Individual Song Selection
-    st.sidebar.markdown("<h2 style='color:#00FFFF;'>TRACK_SELECTOR</h2>", unsafe_allow_html=True)
-    pilot_id = st.sidebar.text_input("NETRUNNER_ID:", "DAVID_MARTINEZ_01")
+    // Safety Floor (The "Street" underneath)
+    levelData.push({ x: -1000, y: height - 50, w: length * 350, h: 200, type: 'street' });
+
+    for (let i = 0; i < length; i++) {
+        let isGap = i > 4 && Math.random() < 0.25;
+        if (!isGap) {
+            let ry = height * 0.5 + (Math.random() * 200);
+            levelData.push({ x: i * 300, y: ry, w: 260, h: height, type: 'roof' });
+            if (i > 5 && Math.random() < 0.35) {
+                enemies.push({ x: i * 300 + 100, y: ry - 100, phase: Math.random() * 6 });
+            }
+        }
+    }
+    levelData.push({ x: length * 300, y: height * 0.5, w: 400, h: height, type: 'goal' });
+}
+
+function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    generateLevel(currentLevel);
+}
+window.addEventListener('resize', resize);
+resize();
+
+window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if(e.code === 'KeyS') shoot();
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+function shoot() {
+    let vx = 0, vy = 0;
+    if (keys['ArrowUp']) vy = -18;
+    else if (keys['ArrowDown']) vy = 18;
+    else vx = 18 * (player.vx >= 0 ? 1 : -1);
+    if (vx === 0 && vy === 0) vx = 18;
+    bullets.push({ x: player.x + 25, y: player.y + 20, vx, vy, rotation: 0 });
+}
+
+function update() {
+    if (keys['ArrowRight']) { player.vx += player.speed; }
+    if (keys['ArrowLeft']) { player.vx -= player.speed; }
+    player.vx *= 0.88; player.x += player.vx;
+    player.vy += 0.85; player.y += player.vy;
+
+    player.grounded = false;
+    levelData.forEach(tile => {
+        if (player.x + player.w > tile.x && player.x < tile.x + tile.w &&
+            player.y + player.h > tile.y && player.y + player.h < tile.y + player.vy + 15) {
+            player.y = tile.y - player.h; player.vy = 0; player.grounded = true;
+            if (tile.type === 'goal') nextLevel();
+        }
+    });
+
+    if (keys['ArrowUp'] && player.grounded) { player.vy = player.jumpForce; player.grounded = false; }
+
+    enemies.forEach((en, i) => {
+        en.y += Math.sin(Date.now()/300 + en.phase) * 1.2;
+        bullets.forEach((b, bi) => {
+            if (b.x > en.x && b.x < en.x+60 && b.y > en.y && b.y < en.y+60) {
+                enemies.splice(i, 1); bullets.splice(bi, 1);
+                speechTimer = 60; screenShake = 10;
+            }
+        });
+    });
+
+    cameraX += (player.x - cameraX - width / 3) * 0.1;
+    bullets.forEach((b, i) => { 
+        b.x += b.vx; b.y += b.vy; b.rotation += 0.5;
+        if(Math.abs(b.x-player.x)>2000) bullets.splice(i,1); 
+    });
     
-    # Sort titles and allow selection
-    all_tracks = sorted(df_raw[name_col].unique().astype(str))
-    selected_tracks = st.sidebar.multiselect(
-        "SELECT_TARGET_SONGS:", 
-        options=all_tracks, 
-        default=all_tracks[0:5] if len(all_tracks) > 5 else all_tracks
-    )
-    
-    # Filter by chosen titles
-    df = df_raw[df_raw[name_col].isin(selected_tracks)]
-    
-    # Main Header
-    st.markdown(f"<h1 style='text-align:center; color:#ffffff;'>{pilot_id} // AUDIO_KOMBAT</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:#00FFFF;'>STATUS: TARGETING_TRACKS // GRID: STABLE</p>", unsafe_allow_html=True)
+    if (speechTimer > 0) speechTimer--;
+    if (screenShake > 0) screenShake *= 0.9;
+    animTick++;
+}
 
-    # 6. Metrics
-    st.markdown('<p class="section-header">TARGET_DATA_FEED</p>', unsafe_allow_html=True)
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("TRACKS", len(df))
-    m2.metric("AVG_POWER", f"{df['popularity'].mean():.1f}" if not df.empty else "0")
-    m3.metric("SYNC_RATE", f"{df['danceability'].mean()*100:.1f}%" if not df.empty else "0%")
-    m4.metric("KI_ENERGY", f"{df['energy'].mean()*100:.1f}%" if not df.empty else "0%")
+function drawBackground() {
+    // Purple Night Gradient
+    let grd = ctx.createLinearGradient(0,0,0,height);
+    grd.addColorStop(0, "#0a0515");
+    grd.addColorStop(1, "#2a1040");
+    ctx.fillStyle = grd;
+    ctx.fillRect(0,0,width,height);
 
-    # 7. Neon Charts
-    st.divider()
-    c1, c2 = st.columns(2)
-    cyber_palette = ["#00FFFF", "#FF00FF", "#A065D4", "#FF6600", "#FF0033"]
+    backgroundBuildings.forEach(b => {
+        let px = (b.x - cameraX * b.parallax) % (backgroundBuildings.length * 400);
+        if (px < -600) px += backgroundBuildings.length * 400;
+        ctx.fillStyle = b.color;
+        ctx.fillRect(px, height - b.h, b.w, b.h);
+        
+        // Window lights
+        if(b.windows) {
+            ctx.fillStyle = "#80f4ff22";
+            for(let r=0; r<6; r++) {
+                for(let c=0; c<4; c++) {
+                    ctx.fillRect(px + 20 + c*40, height - b.h + 40 + r*60, 15, 25);
+                }
+            }
+        }
+    });
+}
 
-    with c1:
-        # Scatter Plot uses titles as the label
-        fig1 = px.scatter(df, x="danceability", y="popularity", 
-                         color=name_col, 
-                         hover_name=name_col,
-                         title="KINETIC_SYNC (TRACK_POSITIONING)", 
-                         color_discrete_sequence=cyber_palette)
-        fig1.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-        st.plotly_chart(fig1, use_container_width=True)
+function drawSpeechBubble(x, y) {
+    ctx.save();
+    ctx.translate(x + 50, y - 40);
+    ctx.fillStyle = "white"; ctx.strokeStyle = "black"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(120,0); ctx.lineTo(120,-40); ctx.lineTo(0,-40); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(0,15); ctx.lineTo(20,0); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "purple"; ctx.font = "bold 14px Orbitron"; ctx.textAlign = "center";
+    ctx.fillText("COWABUNGA!", 60, -15);
+    ctx.restore();
+}
 
-    with c2:
-        # Energy Waveform by specific Title
-        fig2 = px.bar(df, x=name_col, y=["energy", "danceability"], barmode="group",
-                     title="WAVEFORM_ENERGY_BY_TRACK", 
-                     color_discrete_sequence=["#FF00FF", "#00FFFF"]) 
-        fig2.update_layout(
-            template="plotly_dark", 
-            paper_bgcolor='rgba(0,0,0,0)', 
-            plot_bgcolor='rgba(0,0,0,0)',
-            xaxis_tickangle=-45,
-            showlegend=True
-        )
-        st.plotly_chart(fig2, use_container_width=True)
+function drawRaphael(p) {
+    ctx.save();
+    ctx.translate(p.x + p.w/2, p.y + p.h/2);
+    ctx.scale(p.vx >= 0 ? 1 : -1, 1);
+    ctx.fillStyle = p.shell;
+    ctx.beginPath(); ctx.ellipse(-5, 5, 24, 30, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = p.color;
+    ctx.fillRect(-15, -10, 30, 35);
+    let legMove = Math.sin(animTick * 0.25) * 15;
+    ctx.strokeStyle = p.color; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(-8, 20); ctx.lineTo(-12 - (p.vx?legMove:0), 42); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(8, 20); ctx.lineTo(12 + (p.vx?legMove:0), 42); ctx.stroke();
+    ctx.fillStyle = '#e8c985'; ctx.fillRect(-12, -5, 24, 28);
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.ellipse(12, -22, 20, 16, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = p.mask; ctx.fillRect(2, -28, 28, 10);
+    ctx.beginPath(); ctx.moveTo(-5, -23); ctx.quadraticCurveTo(-30, -23 + Math.sin(animTick*0.15)*12, -45, -10);
+    ctx.lineWidth = 5; ctx.strokeStyle = p.mask; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.fillRect(14, -26, 5, 5); ctx.fillRect(23, -26, 5, 5);
+    ctx.restore();
+}
 
-    # 8. Data Table
-    st.markdown('<p class="section-header">CHROMED_ARCHIVE_LOGS</p>', unsafe_allow_html=True)
-    st.dataframe(df, use_container_width=True)
-    
-    st.markdown("<br><p style='text-align:center; font-size:0.8rem; color:#888;'>'Never fade away, Netrunner.'</p>", unsafe_allow_html=True)
+function draw() {
+    drawBackground();
+    ctx.save();
+    let sx = (Math.random() - 0.5) * screenShake;
+    let sy = (Math.random() - 0.5) * screenShake;
+    ctx.translate(-cameraX + sx, sy);
 
-else:
-    st.error("SYSTEM ERROR: Data Link Severed. Ensure tracks.csv is present.")
+    levelData.forEach(tile => {
+        // Grey and Purple platform scheme
+        ctx.fillStyle = "#201535"; 
+        ctx.strokeStyle = tile.type === 'goal' ? '#ff0' : "#a0f";
+        ctx.lineWidth = 4;
+        ctx.fillRect(tile.x, tile.y, tile.w, tile.h);
+        ctx.strokeRect(tile.x, tile.y, tile.w, tile.h);
+        
+        // Roof detail
+        if(tile.type === 'roof') {
+            ctx.fillStyle = "#150a25";
+            ctx.fillRect(tile.x + 20, tile.y + 10, tile.w - 40, 10);
+        }
+    });
+
+    enemies.forEach(en => {
+        ctx.save();
+        ctx.translate(en.x + 30, en.y + 30);
+        ctx.shadowBlur = 15; ctx.shadowColor = "#0ff";
+        ctx.fillStyle = "#ff00ff";
+        ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+    });
+
+    drawRaphael(player);
+    bullets.forEach(b => {
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.rotation);
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(0, 15); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(8, 0); ctx.stroke();
+        ctx.restore();
+    });
+
+    if (speechTimer > 0) drawSpeechBubble(player.x, player.y);
+
+    ctx.restore();
+    update();
+    requestAnimationFrame(draw);
+}
+
+function nextLevel() {
+    currentLevel++;
+    document.getElementById('lvl').innerText = currentLevel;
+    player.x = 100; player.y = 0;
+    generateLevel(currentLevel);
+}
+
+draw();
+</script>
+</body>
+</html>
