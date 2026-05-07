@@ -41,7 +41,7 @@ pip install -r requirements.txt
 streamlit run app.py
 
 5. Open in your browser
-http://localhost:8501
+https://spotify-tracks-sawyer-tujfv7hxwdp8xxxg4bgqtg.streamlit.app/
 
 Dataset Description:
 The dashboard uses a tracks.csv dataset containing musical attributes for audio tracks.
