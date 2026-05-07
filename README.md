@@ -1,30 +1,66 @@
-# Night City Radio: Music DNA Analytics Dashboard
+NIGHT CITY // AUDIO ANALYTICS DASHBOARD (Part 2)
 
-An interactive data analytics dashboard built with Python and Streamlit for **BAN-461: Advanced Data Modeling Systems**.
+An interactive cyberpunk-themed analytics dashboard built with Python and Streamlit for BAN‑461: Advanced Data Modeling Systems.
 
-**Analytical Question:** *Which musical characteristics (Energy, Danceability, Acousticness) define the most popular tracks, and how do these trends vary across different genres?*
+Analytical Question:
+Which musical characteristics (Energy, Danceability, Acousticness) define the most popular tracks — and how do these trends vary across different genres?
 
-**Live App:** *(paste your Streamlit Community Cloud URL here)*
-**GitHub Repo:** *(paste your GitHub repository URL here)*
+Live App: (insert your Streamlit Community Cloud URL)
+GitHub Repo: (insert your repository URL)
 
----
+Project Structure:
+app.py – Main Streamlit application
+tracks.csv – Dataset used for analysis
+requirements.txt – Python dependencies
+README.txt – This file
 
-## Project Structure
+Dashboard Features:
+4 KPI Metrics: Sample Size, Avg Popularity, Avg Danceability, Avg Energy
+2 Sidebar Filters: Genre selection and Energy range slider
+3 Core Components: Mission Briefing, Scatter Plot, Genre Variance Bar Chart
+Raw Data Table reflecting all filters
+Cyberpunk UI Theme using custom CSS
 
-```text
-├── app.py               # Main Streamlit application
-├── requirements.txt     # Python dependencies
-├── tracks.csv           # Dataset (Audio features & popularity scores)
-└── README.md            # This file
-Dashboard Features4 KPI metrics — Track Nodes, Avg Popularity, Sync (Danceability), and Chrome (Energy), all updating dynamically with filters4 sidebar filters — Radio Station, Netrunner ID, Genre Dimension, and Energy Pulse Range3 visualizations — Kinetic Sync scatter plot, Power Distribution bar chart, and Data Waveform popularity trendMission Briefing section — Analytical conclusions tied to music trend discoveryArchive Data Stream — Raw data view that reflects active netrunner filtersCSV export — Download the filtered dataset with one clickRunning LocallyPrerequisitesPython 3.9 or higherpipSetupClone the repositoryBashgit clone [https://github.com/your-username/your-repo-name.git](https://github.com/your-username/your-repo-name.git)
+Running Locally:
+Prerequisites: Python 3.9 or higher, pip
+
+Setup Steps:
+1. Clone the repository
+git clone https://github.com/your-username/your-repo-name.git
 cd your-repo-name
-Create and activate a virtual environment (recommended)Bashpython -m venv venv
 
-# macOS / Linux
-source venv/bin/activate
+2. Create and activate a virtual environment
+python -m venv venv
+source venv/bin/activate (macOS/Linux)
+venv\Scripts\activate (Windows)
 
-# Windows
-venv\Scripts\activate
-Install dependenciesBashpip install -r requirements.txt
-Run the appBashstreamlit run app.py
-DatasetKey fields used in this dashboard:ColumnDescriptiontrack_nameThe title of the song/audio nodegenreMusical category used for meaningful dimension filteringpopularity0–100 score based on streaming volume and frequencydanceabilitySuitability for dancing based on tempo and rhythm stabilityenergyPerceptual measure of intensity, activity, and dynamic rangeacousticnessConfidence measure of whether the track is acousticvalenceMeasure of the musical positiveness conveyed by a trackDependenciesPackagePurposestreamlitWeb app frameworkpandasData loading and transformationplotlyInteractive chartsnumpySupporting numerical operations
+3. Install dependencies
+pip install -r requirements.txt
+
+4. Run the app
+streamlit run app.py
+
+5. Open in your browser
+http://localhost:8501
+
+Dataset Description:
+The dashboard uses a tracks.csv dataset containing musical attributes for audio tracks.
+
+Key Fields:
+popularity – Popularity score of the track
+danceability – Suitability for dancing (0–1)
+energy – Intensity and activity level (0–1)
+acousticness – Likelihood the track is acoustic (0–1)
+genre – Genre label used for filtering
+Other columns vary depending on dataset
+
+If required columns are missing, the app automatically generates fallback values.
+
+Dependencies:
+streamlit – Web app framework
+pandas – Data loading and transformation
+plotly – Interactive visualizations
+openpyxl – Excel file support if needed
+
+Code Summary:
+The dashboard includes a custom cyberpunk theme using injected CSS, a data engine that loads and cleans the tracks dataset, sidebar filters for genre and energy range, a Mission Briefing expander containing the analytical question and key findings, two visualizations answering the analytical question, and a raw data table for exploration.
